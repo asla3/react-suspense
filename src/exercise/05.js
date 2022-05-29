@@ -8,10 +8,9 @@ import {
   PokemonForm,
   PokemonDataView,
   PokemonErrorBoundary,
+  getImageUrlForPokemon,
 } from '../pokemon'
 import {createResource} from '../utils'
-
-const srcResourceCache = {}
 
 const preloadImage = src => {
   return new Promise(resolve => {
@@ -21,28 +20,18 @@ const preloadImage = src => {
   })
 }
 
-const getSrcResource = src => {
-  let resource = srcResourceCache[src]
-  if (!resource) {
-    resource = createResource(preloadImage(src))
-    srcResourceCache[src] = resource
-  }
-  return resource
-}
-
 const Img = ({src, ...props}) => {
-  const srcResource = getSrcResource(src)
-
   // eslint-disable-next-line jsx-a11y/alt-text
-  return <img src={srcResource.read()} {...props} />
+  return <img {...props} src={src} />
 }
 
 function PokemonInfo({pokemonResource}) {
-  const pokemon = pokemonResource.read()
+  const pokemon = pokemonResource.data.read()
+  const pokemonSrc = pokemonResource.src.read()
   return (
     <div>
       <div className="pokemon-info__img-wrapper">
-        <Img src={pokemon.image} alt={pokemon.name} />
+        <Img src={pokemonSrc} alt={pokemon.name} />
       </div>
       <PokemonDataView pokemon={pokemon} />
     </div>
@@ -59,16 +48,25 @@ const pokemonResourceCache = {}
 
 function getPokemonResource(name) {
   const lowerName = name.toLowerCase()
-  let resource = pokemonResourceCache[lowerName]
-  if (!resource) {
-    resource = createPokemonResource(lowerName)
-    pokemonResourceCache[lowerName] = resource
+  const resource = {
+    data:
+      pokemonResourceCache[lowerName]?.data ??
+      createPokemonDataResource(lowerName),
+    src:
+      pokemonResourceCache[lowerName]?.src ??
+      createPokemonSrcResource(lowerName),
   }
+  pokemonResourceCache[lowerName] = resource
+
   return resource
 }
 
-function createPokemonResource(pokemonName) {
+function createPokemonDataResource(pokemonName) {
   return createResource(fetchPokemon(pokemonName))
+}
+
+const createPokemonSrcResource = pokemonName => {
+  return createResource(preloadImage(getImageUrlForPokemon(pokemonName)))
 }
 
 function App() {
